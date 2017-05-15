@@ -27,6 +27,7 @@ The data is available in SAS XPORT formats. We will use the `foreign::read.xport
 For statistically accurate reporting sophisticated weighting models must be used in the analysis of this data. For our purposes (certification for SME CDSW team) we're more interested in the processing, so will not apply those models but simply use the raw data as is.
 
 Data urls with codebooks are:
+
 Year | Data 
 -----|-----------------
 2011 | http://www.cdc.gov/brfss/annual_data/2011/LLCP2011XPT.zip 
