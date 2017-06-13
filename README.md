@@ -67,4 +67,7 @@ where the data is either missing or incomplete) and determine how to deal with t
 
 
 # Data Prep
+_RACEGR3 is known as _RACEGR2 in 2011 & 2012, so the column will be renamed to _RACEGR3
+
+_MICHD is not present in the years 2011 thru 2014 so will be calculated
 We will try to figure out whether someone is asthmatic (i.e. _ASTHMS1 has the value 1)
