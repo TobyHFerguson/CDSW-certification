@@ -109,6 +109,8 @@ Value | Meaning
 6 |Age 65 or older
 
 ### \_BMI5CAT
+Value | Meaning 
+---|---
 1 |Underweight
 2 |Normal Weight
 3 |Overweight
