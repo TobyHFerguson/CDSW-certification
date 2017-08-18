@@ -24,6 +24,7 @@ we're interested in includes:
 
 ## Data of Interest
 The field names and the descriptions we'll use are:
+
 Variable Name | Description
 --------------|---------
 DISPCODE | Was the interview completed or not 
@@ -49,6 +50,7 @@ to a 9 during the data processing phase.
 ### \_DISPCODE
 Note that in 2011 the code was 110 and 120, as compared to 1100, 1200 for later years. This will be corrected during 
 the data processing phase.
+
 Value | Meaning | 2011 | 2012 | 2013 | 2014 | 2015
 ---|---|---|---|---|---|---
 1100 | Completed interview | 463,716 | 441,608 | 433,220 | 413,558 | 375,059
