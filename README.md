@@ -54,7 +54,7 @@ the data processing phase.
 Value | Meaning | 2011 | 2012 | 2013 | 2014 | 2015
 ---|---|---|---|---|---|---
 1100 | Completed interview | 463,716 | 441,608 | 433,220 | 413,558 | 375,059
-1200 | Partially completed interview | 42,751 | 34,079 | 58,553 | 51,106
+1200 | Partially completed interview | 42,751 | 34,079 | 58,553 | 51,106 | 66,397
 
 ### \_RFHLTH
 Value | Meaning 
@@ -186,9 +186,12 @@ create a new \_RACEGR3 with the value of \_RACEGR2
 
 If we find a value of 110 or 120 in the DISPCODE field we will replace it with 1100 or 1200
 
-If we find a BLANK value in any field we will replace it with a 9
+If we find a BLANK value in any field we drop the record. This is the default behavior of the
+mechanism used to read the records so makes the coding easier. 
 
 \_MICHD is not present in the years 2011 thru 2014 so is calculated as defined in the [2015 Codebook](https://www.cdc.gov/brfss/annual_data/2015/pdf/codebook15_llcp.pdf) 
+
+
 
 # Target Response
 \_CASTHMS1 is the target field indicating whether someone is asthmatic (\_CASTHMS1 has the value 1) or not 

@@ -14,8 +14,8 @@ try:
   os.mkdir(data_dir)
 except OSError:
   pass
-else:
-  subprocess.check_call(['hdfs', 'dfs', '-mkdir', '-p', data_dir])
+
+subprocess.check_call(['hdfs', 'dfs', '-mkdir', '-p', data_dir])
   
 zips = { '2015': "https://www.cdc.gov/brfss/annual_data/2015/files/LLCP2015ASC.zip",
         '2014': "http://www.cdc.gov/brfss/annual_data/2014/files/LLCP2014ASC.ZIP",
@@ -34,17 +34,18 @@ def get_parquetpath(year): return "brfss/" + get_parquetfile(year)
 
 def get_codebook(year): return "scripts/" +str(year)+"_code.json"
 
-# Download the zips and get the contents into files in hdfs
-for y in zips:
-  url = zips[y]
-  zfile = data_dir +"/"+url.split('/')[-1]
-  urllib.urlretrieve(url,zfile)
-  with zipfile.ZipFile(zfile, 'r') as zf:
-    for z in zf.namelist():
-      zf.extract(z)
-      outfile=get_rawpath(y)
-      os.rename(z, outfile)           
-      subprocess.check_call(['hdfs','dfs', '-put', '-f', outfile, outfile])
+# Download the archives and get the contents into files in hdfs
+# Commented out since the files are now in hdfs
+#for y in zips:
+#  url = zips[y]
+#  zfile = data_dir +"/"+url.split('/')[-1]
+#  urllib.urlretrieve(url,zfile)
+#  with zipfile.ZipFile(zfile, 'r') as zf:
+#    for z in zf.namelist():
+#      zf.extract(z)
+#      outfile=get_rawpath(y)
+#      os.rename(z, outfile)           
+#      subprocess.check_call(['hdfs','dfs', '-put', '-f', outfile, outfile])
  
 # Start the Spark session     
 spark = SparkSession \
@@ -55,7 +56,17 @@ spark = SparkSession \
 
 
 # Helper function to extract the relevant part of the fixed length record  
-def xtract(frame, code, alias): return frame.value.substr(code[alias]["COL"],code[alias]["LENGTH"]).alias(alias.lstrip("_")).cast(IntegerType()) 
+def xtract(frame, code, alias): 
+  start = code[alias]["COL"]
+  length = code[alias]["LENGTH"]
+  colname =  alias.lstrip("_")
+  return frame.value.substr(start,length).alias(colname).cast(IntegerType()) 
+
+# Define a helper function to correct the DISPCODE column
+def dispcode(c):
+  return c if c > 1000 else c * 10
+  
+dispcodeu = udf (dispcode, IntegerType())
 
 # 2015 has the _MICHD column already defined
 # Extract the relevant columns and write the dataframe to a parquet file
@@ -63,7 +74,7 @@ year = 2015
 with open(get_codebook(year)) as yj:
   data = json.load(yj)
   df = spark.read.text(get_rawpath(year))
-  df.select(
+  newdf = df.select(
             xtract(df, data, "DISPCODE"),
             xtract(df, data, "_RFHLTH"),
             xtract(df, data, "_HCVU651"),
@@ -76,8 +87,11 @@ with open(get_codebook(year)) as yj:
             xtract(df, data, "_SMOKER3"),
             xtract(df, data, "CVDINFR4"),
             xtract(df, data, "CVDCRHD4")
-            ).write.parquet(get_parquetpath(year), mode="overwrite")
+            )
+  newdf.withColumn("DISPCODE", dispcodeu(newdf.DISPCODE)).write.parquet(get_parquetpath(year), mode="overwrite")
 
+df = spark.read.parquet(get_parquetpath(year))
+df.select()
 
 # Define some helper functions so we can create the _MICHD column
 def michd(I, J): 
@@ -87,7 +101,7 @@ def michd(I, J):
 michdu = udf (michd, IntegerType())             
 
 # Extract the relevent data frames for 2011 thru' 214 nd write to parquet'    
-for year in xrange(2011,2014):
+for year in xrange(2011,2015):
   with open(get_codebook(year)) as yj:
     data = json.load(yj)
     try:
@@ -108,8 +122,6 @@ for year in xrange(2011,2014):
               xtract(df, data, "CVDINFR4"),
               xtract(df, data, "CVDCRHD4")
               )
-    newdf.withColumn("MICHD", michdu(newdf.CVDINFR4, newdf.CVDCRHD4))\
+    newdf.withColumn("MICHD", michdu(newdf.CVDINFR4, newdf.CVDCRHD4)).withColumn("DISPCODE", dispcodeu(newdf.DISPCODE))\
         .write.parquet(get_parquetpath(year), mode="overwrite")
 
-for y in zips:
-  
