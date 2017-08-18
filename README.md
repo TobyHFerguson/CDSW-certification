@@ -191,6 +191,88 @@ mechanism used to read the records so makes the coding easier.
 
 \_MICHD is not present in the years 2011 thru 2014 so is calculated as defined in the [2015 Codebook](https://www.cdc.gov/brfss/annual_data/2015/pdf/codebook15_llcp.pdf) 
 
+## Validation
+We create Impala tables using the following technique:
+
+First, figure out what the parquet files are called:
+
+```bash
+cdsw@psjfrp91wt2nw5rn:~$ hdfs dfs -ls brfss/*.parquet/part-00000-* | awk '{ print $8 }'
+brfss/2011.parquet/part-00000-7b4d4723-9872-4d17-b921-bfcd8c1c9c66.snappy.parquet
+brfss/2012.parquet/part-00000-699da841-6c73-449b-ad4a-68def324d033.snappy.parquet
+brfss/2013.parquet/part-00000-833cbf0c-5b15-4d4d-8efe-ad01ab07ba3e.snappy.parquet
+brfss/2014.parquet/part-00000-80fcdcd0-d1bc-4ad2-8d4c-063294d7764a.snappy.parquet
+brfss/2015.parquet/part-00000-843db927-4e9c-4a57-be9c-a29f17f3b5a6.snappy.parquet
+```
+
+Then, using Hue, create the external tables in the Impala editor:
+```sql
+create external table brfss_2011 like parquet '/user/clouderanT/brfss/2011.parquet/part-00000-7b4d4723-9872-4d17-b921-bfcd8c1c9c66.snappy.parquet' 
+stored as parquet location '/user/clouderanT/brfss/2011.parquet';
+create external table brfss_2012 like parquet '/user/clouderanT/brfss/2012.parquet/part-00000-699da841-6c73-449b-ad4a-68def324d033.snappy.parquet' 
+stored as parquet location '/user/clouderanT/brfss/2012.parquet';
+create external table brfss_2013 like parquet '/user/clouderanT/brfss/2013.parquet/part-00000-833cbf0c-5b15-4d4d-8efe-ad01ab07ba3e.snappy.parquet' 
+stored as parquet location '/user/clouderanT/brfss/2013.parquet';
+create external table brfss_2014 like parquet '/user/clouderanT/brfss/2014.parquet/part-00000-80fcdcd0-d1bc-4ad2-8d4c-063294d7764a.snappy.parquet'    
+stored as parquet location '/user/clouderanT/brfss/2014.parquet';
+create external table brfss_2015 like parquet '/user/clouderanT/brfss/2015.parquet/part-00000-843db927-4e9c-4a57-be9c-a29f17f3b5a6.snappy.parquet'    
+stored as parquet location '/user/clouderanT/brfss/2015.parquet';
+```
+
+We then checked some sample counts to see if the data had been read and converted correctly:
+
+```sql
+select count(dispcode) from brfss_2011 where dispcode = 1100;
+
+463716
+```
+This is a correct value.
+
+```sql
+select count(dispcode) from brfss_2014 where dispcode = 1200;
+
+51106
+```
+This is a correct value.
+```sql
+select count(casthm1) from brfss_2012 where casthm1 = 9;
+
+3140
+```
+This is a correct value.
+```sql
+select count(casthm1) from brfss_2013 where casthm1 = 1;
+
+442713
+```
+This is an **incorrect** value. It should be 447218 according to the [2013 code book](https://www.cdc.gov/brfss/annual_data/2013/pdf/codebook13_llcp.pdf).
+```sql
+select count(casthm1) from brfss_2013 where casthm1 = 2;
+
+45630
+```
+This is a correct value
+```sql
+select count(casthm1) from brfss_2013 where casthm1 = 9;
+
+3425
+```
+This is a correct value
+
+```sql
+select count(dispcode) from brfss_2013 where dispcode = 1100;
+
+433220
+```
+This is a correct value
+```sql
+select count(dispcode) from brfss_2013 where dispcode = 1200;
+
+58553
+```
+
+So we have one incorrect value, where a 3 (our data) should be an 8. I think I'm going to ignore it for now!
+
 
 
 # Target Response
