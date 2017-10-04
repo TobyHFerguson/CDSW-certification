@@ -3,15 +3,31 @@ library(dplyr)
 
 sc <- spark_connect(master = "yarn-client")
 
-brfss_2011 <- spark_read_parquet(sc, "brfss_2011", "brfss/2011.parquet") %>% na.omit()
-brfss_2012 <- spark_read_parquet(sc, "brfss_2012", "brfss/2012.parquet") %>% na.omit()
-brfss <- union_all(brfss_2011,brfss_2012) %>% 
+get_file <- function(year) { spark_read_parquet(sc, paste0("brfss",year), paste0("brfss/",year,".parquet")) %>% na.omit() }
+                                                
+brfss_2011 <- get_file("2011")
+#brfss_2012 <- get_file("2012")
+#brfss_2013 <- get_file("2013")
+#brfss_2014 <- get_file("2014")
+#brfss_2015 <- get_file("2015")
+#brfss <- union_all(brfss_2011, brfss_2012, brfss_2013, brfss_2014, brfss_2015) %>%
+brfss <- brfss_2011 %>%
+#Ensure that the null replies are omitted
   filter(CASTHM1 != 9) %>%
-  mutate(RESPONSE = ifelse(CASTHM1 == 1, 0, 1)) %>% 
-  select(-CASTHM1)
+#Ensure that the 'no' responses are coded as '0', and everything else as a '1'
+  mutate(RESPONSE = ifelse(CASTHM1 == 1, 0L, 1L)) %>%
+# Delete the CASTHM1 and DISPCODE columns
+select(-CASTHM1) %>%
+select(-DISPCODE)
 
-brfss.training <- sdf_sample(brfss, 0.6, seed = 1234567)
-brfss.test <- sdf_sample(brfss, 0.4, seed = 1234567)
-model <- ml_logistic_regression(x=brfss.training, RESPONSE ~ . - DISPCODE)
-summary(model)
-prediction <- sdf_predict(model, brfss.test) %>% collect()
+
+partitions <- sdf_partition(brfss, training=0.75, test=0.25, seed=1234567)
+sdf_register(partitions, c("brfss_training", "brfss_testing"))
+brfss_training <- tbl(sc,"brfss_training")
+brfss_testing <- tbl(sc, "brfss_testing")
+brfss_model <- ml_logistic_regression(partitions$training, RESPONSE ~ .)
+
+brfss_predict <- sdf_predict(brfss_model, brfss_testing) %>% collect
+
+marked <- sdf_predict(model, partitions$test) %>% mutate(good = RESPONSE == prediction)  %>% collect()
+mean(marked$good)
