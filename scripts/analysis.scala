@@ -3,15 +3,16 @@ import org.apache.spark.sql.functions._;
 import org.apache.spark.ml.feature._;
 import org.apache.spark.ml._;
 
-  
+// Read in the parquet file 
 val brfss = spark.read.format("parquet").load("brfss/2011.parquet");
   
-//Drop the null valued rows
+// Drop the null valued rows and those with no asthma value.
 val brfss_no_nulls = brfss.na.drop().filter("CASTHM1 in (1,2)");
   
 
-
-// Function to convert the 1, 2, to a yes/no/otherwise string  
+// #Encoding functions - convert the numeric values to strings.
+  
+// Function to convert the 1, 2, values to a yes/no/unknown string  
 def yes_no(arg : Int) : String = { 
     arg match {
       case 1 => "Yes";
@@ -20,22 +21,61 @@ def yes_no(arg : Int) : String = {
 
     }
 }
-//Function to encode the race group
-def code_racegroup(racegroup: Int) : String = { racegroup match { case 1 => "whitenonhispanic"; case 2 => "blacknonhispanic"; case 3 => "othernonhispanic"; case 4 => "multiracialnonhispanic"; case 5 => "hispanic"; case _ => "unknown" } }
-def code_agegroup(agegroup: Int) : String = { agegroup match { case 1 => "18+"; case 2 => "25+"; case 3 => "35+"; case 4 => "45+"; case 5 => "55+"; case 6 => "65+"; case _ => "unknown" } }
-def code_bmicategory(bmicategory: Int) : String = { bmicategory match { case 1 => "underweight"; case 2 => "normalweight"; case 3 => "overweight"; case 4 => "obese";  case _ =>"unknown" } }
-def code_smoker(smoker: Int) : String = { smoker match { case 1 => "everyday"; case 2 => "somedays"; case 3 => "former"; case 4 => "never"; case _ => "unknown" } }
+
+def code_racegroup(racegroup: Int) : String = { 
+  racegroup match { 
+    case 1 => "whitenonhispanic"; 
+    case 2 => "blacknonhispanic"; 
+    case 3 => "othernonhispanic"; 
+    case 4 => "multiracialnonhispanic"; 
+    case 5 => "hispanic"; 
+    case _ => "unknown" 
+  } 
+}
+
+def code_agegroup(agegroup: Int) : String = { 
+  agegroup match { 
+    case 1 => "18+"; 
+    case 2 => "25+"; 
+    case 3 => "35+"; 
+    case 4 => "45+"; 
+    case 5 => "55+"; 
+    case 6 => "65+"; 
+    case _ => "unknown" 
+  } 
+}
+def code_bmicategory(bmicategory: Int) : String = { 
+  bmicategory match { 
+    case 1 => "underweight"; 
+    case 2 => "normalweight"; 
+    case 3 => "overweight"; 
+    case 4 => "obese";  
+    case _ =>"unknown" 
+  } 
+}
+def code_smoker(smoker: Int) : String = { 
+  smoker match { 
+    case 1 => "everyday"; 
+    case 2 => "somedays"; 
+    case 3 => "former"; 
+    case 4 => "never"; 
+    case _ => "unknown" 
+  } 
+}
 
 
 
+// UDF functions that can be distributed across the cluster
 val yes_no_udf = udf(yes_no _);
 val code_racegroup_udf = udf(code_racegroup _);
 val code_agegroup_udf = udf(code_agegroup _);
 val code_bmicategory_udf = udf(code_bmicategory _);
 val code_smoker_udf = udf(code_smoker _);
   
-  
+// Add a 'label' column, using the value of 'CASTHM1', reducing the value to the range [0,1] (no asthma, asthma)
 val brfss_labeled = brfss_no_nulls.withColumn("label", 'CASTHM1 - 1)
+                         
+// convert the numbers to strings                                              
 val brfss_strings = brfss_labeled.
   withColumn("ingoodhealth", yes_no_udf('RFHLTH)).
   withColumn("hascoverage", yes_no_udf('HCVU651)).
@@ -49,6 +89,8 @@ val brfss_strings = brfss_labeled.
   withColumn("smoker", code_smoker_udf('SMOKER3)) ;                                                                 
                                    
 
+// At this point the table contains a bunch of string columns that we want to use for making a prediction
+// This requires that the strings be converted to numbers                                       
 val ingoodhealth_idxr = new StringIndexer().setInputCol("ingoodhealth").setOutputCol("ingoodhealth_idx");
 val ingoodhealth_ohr = new OneHotEncoder().setInputCol("ingoodhealth_idx").setOutputCol("ingoodhealth_ohe");
 val hascoverage_idxr = new StringIndexer().setInputCol("hascoverage").setOutputCol("hascoverage_idx");
