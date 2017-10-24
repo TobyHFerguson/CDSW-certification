@@ -27,18 +27,25 @@ The field names and the descriptions we'll use are:
 
 Variable Name | Description
 --------------|---------
+CVDCRHD4 | Angina
+CVDINFR4 | heart attack
 DISPCODE | Was the interview completed or not 
-\_RFHLTH | Adults with good or better health 
-\_HCVU651 | Adults with Health Care coverage 
-\_MICHD | Respondents with heart issues
-\_CASTHM1 | Adult currently has asthma
-\_DRDXAR1 | Diagnosed with Arthritis
-\_RACEGR3 | Five-level race group
+RENTHOM1 | Own or rent home
+SEQNO | Record sequence number
+SEX | Respondent's sex
 \_AGE_G | Six level age group 
 \_BMI5CAT | BMI Category
+\_CASTHM1 | Adult currently has asthma
+\_DRDXAR1 | Diagnosed with Arthritis
+\_EDUCAG | Level of education completed
+\_HCVU651 | Adults with Health Care coverage 
+\_INCOMG | Income group
+\_MICHD | Respondents with heart issues
+\_RACEGR3 | Five-level race group
+\_RFHLTH | Adults with good or better health 
 \_SMOKER3 | Four Level Smoke Status
-CVDINFR4 | heart attack
-CVDCRHD4 | Angina
+\_STATE | State FIPS code
+
 
 ## Field Value Meaning & Count by Year
 The meaning of field values and the count of those values by year is shown below. We're only going to use
@@ -47,7 +54,24 @@ the field value count as a sanity check so only two random fields (\_DISPCODE & 
 Some of the fields in the original data used a BLANK value to indicate uncertain data. We will convert all BLANK values
 to a 9 during the data processing phase.
 
-### \_DISPCODE
+### CVDCRHD4
+Value | Meaning 
+---|---
+1 |Yes
+2 |No
+7 |Don’t know/Not sure 
+9 |Refused
+
+### CVDINFR4
+Value | Meaning 
+---|---
+1 |Yes
+2 |No  
+7 |Don’t know/Not sure  
+9 |Refused  
+BLANK |Not asked or Missing
+
+### DISPCODE
 Note that in 2011 the code was 110 and 120, as compared to 1100, 1200 for later years. This will be corrected during 
 the data processing phase.
 
@@ -56,49 +80,26 @@ Value | Meaning | 2011 | 2012 | 2013 | 2014 | 2015
 1100 | Completed interview | 463,716 | 441,608 | 433,220 | 413,558 | 375,059
 1200 | Partially completed interview | 42,751 | 34,079 | 58,553 | 51,106 | 66,397
 
-### \_RFHLTH
-Value | Meaning 
----|---
-1 | Good or Better Health
-2 | Fair or Poor Health
-9 | Unsure or missing
+### RENTHOM1
+Indicates whether the respondent rents or owns their home.
 
-### \_HCVU651
-Value | Meaning 
+Value | Meaning
 ---|---
-1 | Have health care coverage
-2 | Do not have health care coverage
-9 | Don’t know/Not Sure, Refused or Missing
+1 | Own
+2 | Rent
+3 | Other arrangement
+7 | Don’t know/Not Sure
+9 | Refused
+Blank | Missing
 
-### \_MICHD
-Value | Meaning 
+### SEQNO
+An arbitrary, monotonically increasing, sequence number that distinguishes all records in any year
+
+### SEX
+Value | Meaning
 ---|---
-1 | Reported having heart problem
-2 | Did not report having heart problem
-
-### \_CASTHM1
-Value | Meaning | 2011 | 2012 | 2013 | 2014 | 2015
----|---|---|---|---|---|---
-1 | No | 457,964 |429,280 | 442,718 | 418,561 | 398,154
-2 | Yes | 45,203 | 43,267 | 45,630 | 42,875 | 40,000
-9 | Don’t know/Not Sure Or Refused/Missing | 3,300 | 3,140 | 3,425 |3,228 | 3,302
-
-### \_DRDXAR1
-Value | Meaning 
----|---
-1 | Diagnosed with arthritis
-2 | Not diagnosed with arthritis
-BLANK | Don´t know/Not Sure/Refused/Missing
-
-### \_RACEGR3
-Value | Meaning 
----|---
-1 | White only, Non-Hispanic 
-2 |Black only, Non-Hispanic 
-3 |Other race only, Non-Hispanic
-4 |Multiracial, Non-Hispanic
-5 |Hispanic
-9 |Don’t know/Not sure/Refused
+1 | Male
+2 | Female
 
 ### \_AGE_G
 Value | Meaning 
@@ -110,6 +111,13 @@ Value | Meaning
 5 |Age 55 to 64
 6 |Age 65 or older
 
+### \_CASTHM1
+Value | Meaning | 2011 | 2012 | 2013 | 2014 | 2015
+---|---|---|---|---|---|---
+1 | No | 457,964 |429,280 | 442,718 | 418,561 | 398,154
+2 | Yes | 45,203 | 43,267 | 45,630 | 42,875 | 40,000
+9 | Don’t know/Not Sure Or Refused/Missing | 3,300 | 3,140 | 3,425 |3,228 | 3,302
+
 ### \_BMI5CAT
 Value | Meaning 
 ---|---
@@ -118,6 +126,72 @@ Value | Meaning
 3 |Overweight
 4 |Obese
 BLANK |Don’t know/Refused/Missing
+
+### \_DRDXAR1
+Value | Meaning 
+---|---
+1 | Diagnosed with arthritis
+2 | Not diagnosed with arthritis
+BLANK | Don´t know/Not Sure/Refused/Missing
+
+### \_EDUCAG
+A categorized evaluation of the highest level of education achieved by the respondent
+
+Value | Meaning
+---|---
+1 | Did not graduate High School
+2 | Graduated High School
+3 | Attended College or Technical School
+4 | Graduated from College or Technical School
+9 | Don't know, not sure, missing
+
+### \_HCVU651
+Value | Meaning 
+---|---
+1 | Have health care coverage
+2 | Do not have health care coverage
+9 | Don’t know/Not Sure, Refused or Missing
+
+### \_INCOMG
+Respondent's annual household income
+
+Value | Meaning
+--- | ---
+1 | [$0 - $10,000)
+2 | [$10,000 - $15,0000)
+3 | [$15,000 - $20,000)
+4 | [$20,000 - $25,000)
+5 | [$25,000 - $35,000)
+6 | [$35,000 - $50,000)
+7 | [$50,000 - $75,000)
+8 | [$75,000 - )
+77 | Don't know, not sure
+99 | Refused
+Blank | Not asked, or missing
+
+### \_MICHD
+Value | Meaning 
+---|---
+1 | Reported having heart problem
+2 | Did not report having heart problem
+
+### \_RACEGR3
+Value | Meaning 
+---|---
+1 | White only, Non-Hispanic 
+2 |Black only, Non-Hispanic 
+3 |Other race only, Non-Hispanic
+4 |Multiracial, Non-Hispanic
+5 |Hispanic
+9 |Don’t know/Not sure/Refused
+
+### \_RFHLTH
+Value | Meaning 
+---|---
+1 | Good or Better Health
+2 | Fair or Poor Health
+9 | Unsure or missing
+
 
 ### \_SMOKER3
 Value | Meaning 
@@ -128,22 +202,8 @@ Value | Meaning
 4 |Never smoked
 9 |Don’t know/Refused/Missing
 
-### CVDINFR4
-Value | Meaning 
----|---
-1 |Yes
-2 |No  
-7 |Don’t know/Not sure  
-9 |Refused  
-BLANK |Not asked or Missing
-
-### CVDCRHD4
-Value | Meaning 
----|---
-1 |Yes
-2 |No
-7 |Don’t know/Not sure 
-9 |Refused
+### \_STATE
+State FIPS code - widely known, not reproduced here.
 
 I had hoped to investigate the relationship between cholesterol and asthma but the data
 sets for the years 2011 through 2014 dont contain any cholesterol information.
@@ -178,8 +238,8 @@ function (`xtract`) which will extract a named field's contents given the spark 
 the json codebook contents for the relevant year.
 
 ## Field Calculation & Correction.
-### 2015
-The 2015 year has all fields and needs no further processing.
+### 2015, 2016
+The 2015 & 2016 years have all fields and need no further processing.
 ### Other years
 \_RACEGR3 is known as \_RACEGR2 in 2011 & 2012. If we find a year in which \_RACEGR3 is not present then we
 create a new \_RACEGR3 with the value of \_RACEGR2
