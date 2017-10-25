@@ -39,13 +39,15 @@ dispcodeu = udf (dispcode, IntegerType())
 # 2015 has the _MICHD column already defined
 # Extract the relevant columns and write the dataframe to a parquet file
 for year in xrange(2015,2017):
+  pfile=get_parquetpath(year)
   try:
-    spark.read.text(get_parquetpath(year))
-    break
+    spark.read.text(pfile)
+    print(str(year) + " parquet file already exists. Skipping")
+    continue
   except:
     pass
   
-  print("creating year: "+str(year))
+  print("creating parquet file " + pfile +" for: "+str(year))
   with open(get_codebook(year)) as yj:
     data = json.load(yj)
     df = spark.read.text(get_rawpath(year))
@@ -69,10 +71,12 @@ for year in xrange(2015,2017):
                 xtract(df, data, "_SMOKER3"),
                 xtract(df, data, "_STATE")
               )
-    newdf.withColumn("DISPCODE", dispcodeu(newdf.DISPCODE)).write.parquet(get_parquetpath(year), mode="overwrite")
+    newdf.withColumn("DISPCODE", dispcodeu(newdf.DISPCODE)).write.parquet(pfile, mode="overwrite")
 
-df = spark.read.parquet(get_parquetpath(year))
-df.select()
+#Some test stuff
+#df = spark.read.parquet(get_parquetpath(year))
+#df.select()
+#df.count()
 
 # Define some helper functions so we can create the _MICHD column
 def michd(I, J): 
@@ -83,6 +87,15 @@ michdu = udf (michd, IntegerType())
 
 # Extract the relevent data frames for 2011 thru' 2014 and write to parquet'    
 for year in xrange(2011,2015):
+  pfile=get_parquetpath(year)
+  try:
+    spark.read.text(pfile)
+    print(str(year) + " parquet file already exists. Skipping")
+    continue
+  except:
+    pass
+  
+  print("creating parquet file " + pfile +" for: "+str(year))
   with open(get_codebook(year)) as yj:
     data = json.load(yj)
     try:
@@ -110,5 +123,19 @@ for year in xrange(2011,2015):
                 xtract(df, data, "_STATE")
               )
     newdf.withColumn("MICHD", michdu(newdf.CVDINFR4, newdf.CVDCRHD4)).withColumn("DISPCODE", dispcodeu(newdf.DISPCODE))\
-        .write.parquet(get_parquetpath(year), mode="overwrite")
+        .write.parquet(pfile, mode="overwrite")
 
+records_per_year = {2011: 506467,
+                    2012: 475687,
+                    2013: 491773,
+                    2014: 464664,
+                    2015: 441456,
+                    2016: 486303
+                   }
+for year in xrange(2011,2017):
+  df = spark.read.parquet(get_parquetpath(year))
+  nr=df.count()
+  if (nr == records_per_year[year]):
+    print(str(year)+" has " +str(nr)+" records")
+  else:
+    print(str(year)+" has " + str(nr) + " records but it should've been " +str(records_per_year[year]))
