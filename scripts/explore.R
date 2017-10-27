@@ -7,24 +7,25 @@ sc <- spark_connect(master = "yarn-client")
 get_file <- function(year) { spark_read_parquet(sc, paste0("brfss",year), paste0("brfss/",year,".parquet")) %>% na.omit() %>% mutate(year=year)}
                                                 
 brfss_2011 <- get_file("2011")
-brfss_2012 <- get_file("2012")
-brfss_2013 <- get_file("2013")
-brfss_2014 <- get_file("2014")
-brfss_2015 <- get_file("2015")
+#brfss_2012 <- get_file("2012")
+#brfss_2013 <- get_file("2013")
+#brfss_2014 <- get_file("2014")
+#brfss_2015 <- get_file("2015")
 #brfss <- rbind(brfss_2011, brfss_2012, brfss_2013, brfss_2014, brfss_2015) %>%
 brfss <- brfss_2011
 
 # Filter out the missing or unknown asthmatic responses
 
-brfss <- brfss %>% filter(CASTHM1 %in% c(1,2)) %>% 
-  mutate(hasasthma=CASTHM1 - 1)
+brfss <- brfss_2011 %>% filter(CASTHM1 %in% c(1,2)) %>% 
+  mutate(hasasthma=if_else(CASTHM1 == 1, 'no', 'yes'))
 
 
 brfss_smoking <- brfss  %>%
   select(SMOKER3, hasasthma) %>% 
   collect %>% 
   mutate(smoker = if_else(SMOKER3 == 1, 'everyday', if_else(SMOKER3 == 2, 'somedays', if_else(SMOKER3 == 3, 'former', if_else(SMOKER3 == 4, 'never', 'unknown' ))))) %>%
-  mutate_all(funs(as.factor(.)))
+  mutate_all(funs(as.factor(.))) %>%
+  mutate_at(vars(smoker), funs(ordered(., levels=c("never", "former", "somedays", "everyday", "unknown"))))
 
 # This draws a basic count plot:
 brfss_smoking %>% ggplot(aes(x=smoker)) + geom_bar()
@@ -36,6 +37,13 @@ brfss_smoking %>% ggplot(aes(x=smoker)) + geom_bar()
 p <- brfss_smoking %>% ggplot(aes(x=smoker, y=(..count../sum(..count..)*100))) + labs(y="prevalence") + geom_bar(aes(fill=hasasthma))
 
 p
+
+p + stat_count(geom="text", 
+               colour="black", 
+               size=3.5,
+               aes(x=smoker, 
+                   label=..count.., group=hasasthma), 
+                   position=position_stack(vjust=0.5))
 
 # Now to label each value - this from https://stackoverflow.com/questions/30057765/histogram-ggplot-show-count-label-for-each-bin-for-each-category
 
@@ -67,4 +75,21 @@ c
 # What I want to do is to build a function that will produce these kind of graphs for my various categorical
 # attributes.
 
+# Might need to get the factorization to work properly, so more frequent etc. has a higher number.
 
+# Get ideas for exploratory data science from hadley's R book (in bookmarks)
+
+# I really want the prevalence of asthma in the given populations, by factor case:
+
+prevalence <- function(column, tbl) {
+  tbl <- tbl %>% group_by_(column)
+  pop <- tbl %>% summarize(pop=n())
+  asthmatic <- tbl %>% filter(hasasthma=='yes')%>%summarize(asthmatic=n())
+  full_join(asthmatic, pop) %>% mutate(prev = asthmatic/pop) %>% select(column,prev)
+}
+sp <- prevalence("smoker", brfss_smoking)
+
+## Now we can produce a histogram showing the prevalence:
+
+ggplot(data = sp) +
+  geom_bar(mapping = aes(x = smoker, y = round(prev*100,2)), stat = "identity") + labs(y="prevalence")
