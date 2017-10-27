@@ -19,14 +19,54 @@ brfss <- brfss_2011
 brfss <- brfss_2011 %>% filter(CASTHM1 %in% c(1,2)) %>% 
   mutate(hasasthma=if_else(CASTHM1 == 1, 'no', 'yes'))
 
+prevalence <- function(column, tbl) {
+  tbl <- tbl %>% group_by_(column)
+  pop <- tbl %>% summarize(pop=n())
+  asthmatic <- tbl %>% filter(hasasthma=='yes')%>%summarize(asthmatic=n())
+  full_join(asthmatic, pop) %>% mutate(prev = asthmatic/pop) %>% select(column,prev)
+}
 
-brfss_smoking <- brfss  %>%
+
+## Prevalence of Asthma in various classes
+# What is being shown here is the percentage of some group that have asthma, broken down
+# by the sub-groups. 
+### Smokers
+# Within the group of smokers, what's the relative prevalence of asthma in the various sub-groups?
+group <- brfss  %>%
   select(SMOKER3, hasasthma) %>% 
   collect %>% 
   mutate(smoker = if_else(SMOKER3 == 1, 'everyday', if_else(SMOKER3 == 2, 'somedays', if_else(SMOKER3 == 3, 'former', if_else(SMOKER3 == 4, 'never', 'unknown' ))))) %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(smoker), funs(ordered(., levels=c("never", "former", "somedays", "everyday", "unknown"))))
 
+ggplot(data = prevalence("smoker", group)) +
+  geom_bar(mapping = aes(x = smoker, y = round(prev*100,2)), stat = "identity") + labs(y="prevalence")
+
+### Heart Attack suffers
+group <- brfss %>%
+  select(CVDINFR4, hasasthma) %>%
+  collect %>%
+  mutate(hadheartattack = if_else(CVDINFR4 == 1, 'yes', if_else(CVDINFR4 == 2, 'no', 'unknown'))) %>%
+  mutate_all(funs(as.factor(.))) %>%
+  mutate_at(vars(hadheartattack), funs(ordered(., levels=c("no", "yes",  "unknown"))))
+
+ggplot(data = prevalence("hadheartattack", group)) +
+  geom_bar(mapping = aes(x = hadheartattack, y = round(prev*100,2)), stat = "identity") + labs(y="prevalence")
+
+### Race
+group <- brfss  %>%
+  select(RACEGR3, hasasthma) %>% 
+  collect %>% 
+  mutate(racegroup = if_else(RACEGR3 == 1, 'whitenonhispanic', if_else(RACEGR3 == 2, 'blacknonhispanic', if_else(RACEGR3 == 3, 'othernonhispanic', if_else(RACEGR3 == 4, 'multiracialnonhispanic', if_else(RACEGR3 == 5, 'hispanic', 'unknown' )))))) %>%
+  mutate_all(funs(as.factor(.)))
+
+ggplot(data = prevalence("racegroup", group)) +
+  geom_bar(mapping = aes(x = racegroup, y = round(prev*100,2)), stat = "identity") + labs(y="prevalence") 
+
+It is clear that the multi-racial non-hispanic subgroup has a far larger share of asthmatics than any other racial group.
+
+
+## Evaluate
 # This draws a basic count plot:
 brfss_smoking %>% ggplot(aes(x=smoker)) + geom_bar()
 
@@ -81,15 +121,3 @@ c
 
 # I really want the prevalence of asthma in the given populations, by factor case:
 
-prevalence <- function(column, tbl) {
-  tbl <- tbl %>% group_by_(column)
-  pop <- tbl %>% summarize(pop=n())
-  asthmatic <- tbl %>% filter(hasasthma=='yes')%>%summarize(asthmatic=n())
-  full_join(asthmatic, pop) %>% mutate(prev = asthmatic/pop) %>% select(column,prev)
-}
-sp <- prevalence("smoker", brfss_smoking)
-
-## Now we can produce a histogram showing the prevalence:
-
-ggplot(data = sp) +
-  geom_bar(mapping = aes(x = smoker, y = round(prev*100,2)), stat = "identity") + labs(y="prevalence")
