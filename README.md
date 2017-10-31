@@ -35,7 +35,7 @@ SEQNO | Record sequence number
 SEX | Respondent's sex
 \_AGE_G | Six level age group 
 \_BMI5CAT | BMI Category
-\_CASTHM1 | Adult currently has asthma
+\_CASTHM1 | Adult currently has asthma - THIS IS THE RESULT TO BE PREDICTED
 \_DRDXAR1 | Diagnosed with Arthritis
 \_EDUCAG | Level of education completed
 \_HCVU651 | Adults with Health Care coverage 
@@ -43,7 +43,7 @@ SEX | Respondent's sex
 \_MICHD | Respondents with heart issues
 \_RACEGR3 | Five-level race group
 \_RFHLTH | Adults with good or better health 
-\_SMOKER3 | Four Level Smoke Status
+\_SMOKER3 | Four Level Smoker Status
 \_STATE | State FIPS code
 
 
