@@ -4,8 +4,9 @@ import org.apache.spark.sql.functions._;
 import org.apache.spark.ml.feature._;
 import org.apache.spark.ml._;
 
-// Read in the parquet file 
-val brfss = spark.read.format("parquet").load("brfss/2011.parquet").cache();
+// Read in the parquet file
+
+val brfss = spark.read.format("parquet").load("brfss/2011.parquet", "brfss/2012.parquet", "brfss/2013.parquet", "brfss/2014.parquet", "brfss/2015.parquet", "brfss/2016.parquet").cache();
   
 // Drop the null valued rows and those with no asthma value.
 val brfss_no_nulls = brfss.na.drop().filter("CASTHM1 in (1,2)");

@@ -12,7 +12,7 @@ def get_rawpath(year): return "brfss/" + get_rawfile(year)
 def get_parquetfile(year): return str(year)+".parquet"
 def get_parquetpath(year): return "brfss/" + get_parquetfile(year)
 
-def get_codebook(year): return "scripts/" +str(year)+"_code.json"
+def get_codebook(year): return "codebooks/" +str(year)+"_code.json"
 
  
 # Start the Spark session     
@@ -36,7 +36,8 @@ def dispcode(c):
   
 dispcodeu = udf (dispcode, IntegerType())
 
-# 2015 has the _MICHD column already defined
+# 2015 & 2016 have the _MICHD column already defined
+
 # Extract the relevant columns and write the dataframe to a parquet file
 for year in xrange(2015,2017):
   pfile=get_parquetpath(year)
@@ -125,6 +126,7 @@ for year in xrange(2011,2015):
     newdf.withColumn("MICHD", michdu(newdf.CVDINFR4, newdf.CVDCRHD4)).withColumn("DISPCODE", dispcodeu(newdf.DISPCODE))\
         .write.parquet(pfile, mode="overwrite")
 
+# Test that the number of records read is correct
 records_per_year = {2011: 506467,
                     2012: 475687,
                     2013: 491773,
@@ -136,6 +138,6 @@ for year in xrange(2011,2017):
   df = spark.read.parquet(get_parquetpath(year))
   nr=df.count()
   if (nr == records_per_year[year]):
-    print(str(year)+" has " +str(nr)+" records")
+    print(str(year)+" has " +str(nr)+" records - CORRECT")
   else:
     print(str(year)+" has " + str(nr) + " records but it should've been " +str(records_per_year[year]))

@@ -13,6 +13,7 @@ brfss_2012 <- get_file("2012")
 brfss_2013 <- get_file("2013")
 brfss_2014 <- get_file("2014")
 brfss_2015 <- get_file("2015")
+brfss_2016 <- get_file("2016")
 brfss <- rbind(brfss_2011, brfss_2012, brfss_2013, brfss_2014, brfss_2015) %>%
 filter(CASTHM1 %in% c(1,2)) %>% 
   mutate(hasasthma=if_else(CASTHM1 == 1, 'no', 'yes'))
