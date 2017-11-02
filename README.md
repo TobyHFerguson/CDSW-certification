@@ -357,6 +357,9 @@ We used three different models:
 Unfortunately none of them gave any useful output; all of them simply predicted 'no asthma', which gave an accuracy of
 approximately 90%
 
+To try to circumvent the influence of the negative cases on the model we tried reducing the negative cases
+by about 60%, but that didn't make any difference to the result.
+
 We did attempt to search several hyperparameters using a `TrainValidationSplit` system, but found no hyperparameters
 that gave any different results. We also found that the model seemed to be very slow when trying to calculate a 
 confusionMatrix. On the earlier models this had taken seconds; on the TVS model (using LinearRegression) this took many
