@@ -227,11 +227,14 @@ The ingest process does the minimum necessary to get the data into HDFS:
 * unzip each file into a fixed width file for that year (`$HOME/brfss/YEAR.txt`)
 * write that file into HDFS (`$HDFS_HOME/brfss/YEAR.txt`)
 
+Ingestion can be performed (and should only be necessary once) using the `scripts/1_ingest.py` python2 script.
+
 # Data Processing
 The files are in fixed width format, and location of the fields differ in each of the five years. Furthermore
 the fields present are different for different years. We have to calculate fields for the years where they're
 missing.
 
+We encoded the various data processing steps in the `scripts/2_process.py` python2 script.
 ## Field extraction
 We use a json codebook file, indexed by year, to contain this fixed width content. We then use an observer 
 function (`xtract`) which will extract a named field's contents given the spark data frame and
@@ -252,9 +255,12 @@ mechanism used to read the records so makes the coding easier.
 \_MICHD is not present in the years 2011 thru 2014 so is calculated as defined in the [2015 Codebook](https://www.cdc.gov/brfss/annual_data/2015/pdf/codebook15_llcp.pdf) 
 
 ## Validation
+Using the figures given in the original table we determine whether we have sufficient records in total.
+
+## Impala
 We create Impala tables using the following technique:
 
-First, figure out what the parquet files are called:
+First, figure out what the parquet files are called eg:
 
 ```bash
 cdsw@psjfrp91wt2nw5rn:~$ hdfs dfs -ls brfss/*.parquet/part-00000-* | awk '{ print $8 }'
@@ -278,6 +284,9 @@ stored as parquet location '/user/clouderanT/brfss/2014.parquet';
 create external table brfss_2015 like parquet '/user/clouderanT/brfss/2015.parquet/part-00000-843db927-4e9c-4a57-be9c-a29f17f3b5a6.snappy.parquet'    
 stored as parquet location '/user/clouderanT/brfss/2015.parquet';
 ```
+
+This is all wrapped up in a single shell script `scripts/2a_generate_sql.sh` which will publish the
+appropriate sql.
 
 We then checked some sample counts to see if the data had been read and converted correctly:
 
@@ -333,8 +342,23 @@ select count(dispcode) from brfss_2013 where dispcode = 1200;
 
 So we have one incorrect value, where a 3 (our data) should be an 8. I think I'm going to ignore it for now!
 
+# Exploration
+Using `scripts/3_explore.R` we produced prevalence graphs showing, for each of the features, what the prevalence of
+asthma was for the various values of the feature. 
 
+No single characteristic stood out as being strongly indicative of asthma.
 
-# Target Response
-\_CASTHMS1 is the target field indicating whether someone is asthmatic (\_CASTHMS1 has the value 1) or not 
-(\_CASTHMS1 has some other value)
+# Modeling/Analysis
+We used three different models:
+* LogisticRegression
+* RandomForest
+* GBTClassifier
+
+Unfortunately none of them gave any useful output; all of them simply predicted 'no asthma', which gave an accuracy of
+approximately 90%
+
+We did attempt to search several hyperparameters using a `TrainValidationSplit` system, but found no hyperparameters
+that gave any different results. We also found that the model seemed to be very slow when trying to calculate a 
+confusionMatrix. On the earlier models this had taken seconds; on the TVS model (using LinearRegression) this took many
+minutes. As a consequence we simply left this in the `scripts/old/4_analysis_with_trainvalidationsplit_very_slow.scala`
+file in case we want to come back to re-examine this at a future stage.
