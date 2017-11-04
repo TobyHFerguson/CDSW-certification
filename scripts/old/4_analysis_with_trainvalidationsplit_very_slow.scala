@@ -125,7 +125,7 @@ val test = splits(1)
 
 val tvmodel = trainValidationSplit.fit(training)
 
-val result = tvmodel.transform(test)
+val result = tvmodel.transform(test).cache()
 
 // Print out the confusion matrix for a result
 def confusion_matrix(result: DataFrame) {
