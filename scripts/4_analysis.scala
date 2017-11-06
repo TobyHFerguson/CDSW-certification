@@ -2,6 +2,7 @@ import org.apache.spark.sql.{DataFrame,Dataset}
 import org.apache.spark.ml.classification.{LogisticRegression, RandomForestClassifier,GBTClassifier};
 import org.apache.spark.sql.functions._;
 import org.apache.spark.ml.feature._;
+import org.apache.spark.ml.linalg.DenseMatrix;
 import org.apache.spark.ml._;
 
 // Read in the parquet file
@@ -101,35 +102,54 @@ val training = splits(0).cache();
 val test = splits(1).cache();
   
 
-def confusion_matrix(model : Transformer, test: DataFrame) {
-  val p: DataFrame = model.transform(test)
+def confusion_matrix(prediction: DataFrame) = {
+  val p = prediction
   val tp = p.filter("label == 1 and prediction ==1").count;
   val fp = p.filter("label == 0 and prediction ==1").count;
   val tn = p.filter("label == 0 and prediction ==0").count;
   val fn = p.filter("label == 1 and prediction == 0").count;
                                        
-  spark.createDataFrame(Seq(
-   ("Predicted +", tp, fp),
-    ("Predicted -",fn, tn)
-  )).toDF("","Actual +", " Actual -").show()
+  new DenseMatrix(2,2,Array(tn, fn, fp, tp))
+}
+
+def errorRate(prediction: DataFrame) = {
+  prediction.filter("label != prediction").count.toDouble / prediction.count
 }
 
 val lr = new LogisticRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8);  
   // Fit the model
 val lrModel : Transformer = lr.fit(training)
-// Logistic Regression Confusion Matrix
-confusion_matrix(lrModel, test)
+val lrPrediction = lrModel.transform(test).cache()
 
+// Logistic Regression Evaluation
+//Confusion Matrix - predictions in columns, non-asthma | asthma
+println(confusion_matrix(lrPrediction))
+//Error rate
+println("%.2f%%".format(errorRate(lrPrediction)*100))
+
+
+// Random Forest
 val rf = new RandomForestClassifier().setNumTrees(10)   
 val rfModel = rf.fit(training)
-// Random Forest Confusion Matrix
-confusion_matrix(rfModel, test)
+val rfPrediction = rfModel.transform(test).cache()
+//
+//Random Forest Evaluation
+//Confusion Matrix - predictions in columns, non-asthma | asthma
+println("\n"+confusion_matrix(lrPrediction))
+//Error Rate
+println("\nError Rate: %.2f%%".format(errorRate(lrPrediction)*100))
   
+
+// # Gradient Boosted Trees
 val gbt = new GBTClassifier().setMaxIter(10)   
 val gbtModel = gbt.fit(training)
+val gbtPrediction = gbtModel.transform(test).cache()
 
-// GBT Classifier Confusion Matrix
-confusion_matrix(gbtModel, test)
+//Gradient Boosted Trees Evaluation
+//Confusion Matrix - predictions in columns, non-asthma | asthma
+println("\n"+confusion_matrix(gbtPrediction))
+//Error Rate
+println("\nError Rate: %.2f%%".format(errorRate(gbtPrediction)*100))
 
 // The results demonstrate that the model simply chooses 'no asthma' as the best predictor, no
 // matter what.
@@ -142,7 +162,15 @@ training.filter("label=1").count()/training.filter("label=0").count().toFloat*10
 // To get round this we'll try boosting the positive (has asthma) result ratio (by reducing the number
 // of non-asthma samples) and see if anything that improves things!
 val training_boosted = training.filter("label=1").union(training.filter("label = 0").sample(true, 0.4,3839))
-confusion_matrix(lr.fit(training_boosted), test)
+val tbModel = lr.fit(training_boosted)
+val tbp = tbModel.transform(test)
+
+// Training Boosted Evaluation
+// Confusion Matrix
+println("\n"+confusion_matrix(tbp))
+//Error Rate
+println("\nError Rate: %.2f%%".format(errorRate(tbp)*100))
+
 
 // The result is the same, disappointingly.
 
@@ -161,3 +189,4 @@ confusion_matrix(lr.fit(training_boosted), test)
 // * AGE_G
 // * BMI5CAT
 // * SMOKER3
+

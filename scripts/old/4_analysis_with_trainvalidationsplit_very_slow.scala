@@ -120,8 +120,8 @@ val trainValidationSplit = new TrainValidationSplit().
                                        
                             
 val splits = brfss_strings.randomSplit(Array(0.75, 0.25),12345) ;                                                                         
-val training = splits(0)
-val test = splits(1)
+val training = splits(0).cache()
+val test = splits(1).cache()
 
 val tvmodel = trainValidationSplit.fit(training)
 
