@@ -20,8 +20,8 @@ filter(CASTHM1 %in% c(1,2)) %>%
 
 # Filter out the missing or unknown asthmatic responses
 
-#brfss <- brfss_2011 %>% filter(CASTHM1 %in% c(1,2)) %>% 
-#  mutate(hasasthma=if_else(CASTHM1 == 1, 'no', 'yes'))
+brfss <- brfss_2011 %>% filter(CASTHM1 %in% c(1,2)) %>% 
+  mutate(hasasthma=if_else(CASTHM1 == 1, 'no', 'yes'))
 
 
 
@@ -45,6 +45,36 @@ pgraph <- function(tbl, column, title="") {
   labs(title=title)
 }
 
+# Function for determining asthma prevalence within classes of a factor column
+asthma_prevalence_within_class <- function(tbl, column) {
+  # Get the counts in each class of the given column
+  counts <- tbl %>% group_by_(column) %>% count() %>% dplyr::rename(pop=n)
+  asthmatics <- tbl %>% 
+    group_by_(column) %>% 
+    filter(hasasthma=="yes") %>% 
+    count() %>%
+    inner_join(counts, by=column) %>%
+    mutate(prev=n/pop) %>%
+    select_(column, "prev")
+  asthmatics
+}
+
+# This function isn't working - works OK with hadheartattack, but not with racegroup
+# With headheartattack the hadheartattack comes out as an ordinal, but the racegroup
+# comes  out as a factor.
+
+# Plotting an ordinal works OK with ggplot - separate bars for each value
+# Plotting a factor seems to jam everything into a single column.
+
+# Function for plotting class prevalence graphs
+pgraph <- function(tbl,column, title="") {
+  a <- asthma_prevalence_within_class(tbl,column)
+  ggplot(data=a,aes(x=column, y=prev*100)) + 
+  geom_bar(stat="identity") +
+  geom_label(aes(label=round(prev*100,2)),position=position_stack(vjust=0.8))+
+  labs(title=title, y="Prevalance of Asthma within class (%)", x=paste0("class: ",column))
+}
+q(b, "hadheartattack")
 
 ### Heart Attack sufferers
  brfss %>%
@@ -57,7 +87,7 @@ pgraph <- function(tbl, column, title="") {
   pgraph('hadheartattack', "Asthma and Heart Attacks")
 
 ### Race
-brfss  %>%
+x <- brfss  %>%
   select(RACEGR3, hasasthma) %>% 
   mutate(racegroup = if_else(RACEGR3 == 1, 'whitenonhispanic', if_else(RACEGR3 == 2, 'blacknonhispanic', if_else(RACEGR3 == 3, 'othernonhispanic', if_else(RACEGR3 == 4, 'multiracialnonhispanic', if_else(RACEGR3 == 5, 'hispanic', 'unknown' )))))) %>%
   select(racegroup, hasasthma) %>%
