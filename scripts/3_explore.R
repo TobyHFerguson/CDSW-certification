@@ -26,7 +26,7 @@ filter(CASTHM1 %in% c(1,2)) %>%
 
 
 # Function for showing prevalence of asthma as percentage of overall population within a class
-pgraph <- function(tbl, column) {
+pgraph <- function(tbl, column, title="") {
   ggplot(tbl, 
          aes_string(x=column, 
                     y="(..count../sum(..count..))")) +
@@ -41,125 +41,127 @@ pgraph <- function(tbl, column) {
     stat_count(geom="text", 
                colour="blue", 
                size=3.5,
-               aes(label=paste0(round(..count../sum(..count..)*100, 2), "%")))
+               aes(label=paste0(round(..count../sum(..count..)*100, 2), "%"))) +
+  labs(title=title)
 }
 
 
 ### Heart Attack sufferers
  brfss %>%
-  select(CVDINFR4, hasasthma) %>%
+  select(MICHD, hasasthma) %>%
+  mutate(hadheartattack = if_else(MICHD == 1, 'yes', if_else(MICHD == 2, 'no', 'unknown'))) %>%
+  select(hasasthma,hadheartattack) %>%
   collect %>%
-  mutate(hadheartattack = if_else(CVDINFR4 == 1, 'yes', if_else(CVDINFR4 == 2, 'no', 'unknown'))) %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(hadheartattack), funs(ordered(., levels=c("no", "yes",  "unknown")))) %>%
-  pgraph('hadheartattack')
+  pgraph('hadheartattack', "Asthma and Heart Attacks")
 
 ### Race
 brfss  %>%
   select(RACEGR3, hasasthma) %>% 
-  collect %>% 
   mutate(racegroup = if_else(RACEGR3 == 1, 'whitenonhispanic', if_else(RACEGR3 == 2, 'blacknonhispanic', if_else(RACEGR3 == 3, 'othernonhispanic', if_else(RACEGR3 == 4, 'multiracialnonhispanic', if_else(RACEGR3 == 5, 'hispanic', 'unknown' )))))) %>%
+  select(racegroup, hasasthma) %>%
+  collect %>% 
   mutate_all(funs(as.factor(.))) %>%
-  pgraph('racegroup')
-
-#It is clear that the multi-racial non-hispanic subgroup has a far larger share of asthmatics than any other racial group.
+  pgraph('racegroup', "Asthma and Race")
 
 ## Health
  brfss %>%
   select(RFHLTH, hasasthma) %>%
-  collect %>%
   mutate(ingoodhealth = if_else(RFHLTH == 1, 'yes', if_else(RFHLTH == 2, 'no', 'unknown'))) %>%
+  select(ingoodhealth, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(ingoodhealth), funs(ordered(., levels=c("no", "yes",  "unknown")))) %>%
-  pgraph('ingoodhealth')
+  pgraph('ingoodhealth', "Asthma and Health")
 
 ## Has Health care coverage
  brfss %>%
   select(HCVU651, hasasthma) %>%
-  collect %>%
   mutate(hascoverage = if_else(HCVU651 == 1, 'yes', if_else(HCVU651 == 2, 'no', 'unknown'))) %>%
+  select(hascoverage, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(hascoverage), funs(ordered(., levels=c("no", "yes",  "unknown")))) %>%
-  pgraph('hascoverage')
+  pgraph('hascoverage', "Asthma and Health care coverage")
 
 ## Has Arthritis
  brfss %>%
   select(DRDXAR1, hasasthma) %>%
-  collect %>%
   mutate(hasarthritis = if_else(DRDXAR1 == 1, 'yes', if_else(DRDXAR1 == 2, 'no', 'unknown'))) %>%
+  select(hasarthritis, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(hasarthritis), funs(ordered(., levels=c("no", "yes",  "unknown")))) %>%
-  pgraph('hasarthritis')
+  pgraph('hasarthritis', "Asthma and Arthritis")
 
-## Had Angina
-
- brfss %>%
-  select(CVDCRHD4, hasasthma) %>%
-  collect %>%
-  mutate(hadangina = if_else(CVDCRHD4 == 1, 'yes', if_else(CVDCRHD4 == 2, 'no', 'unknown'))) %>%
-  mutate_all(funs(as.factor(.))) %>%
-  mutate_at(vars(hadangina), funs(ordered(., levels=c("no", "yes",  "unknown")))) %>%
-  pgraph('hadangina')
+# Asthma affects arthritis suffers at twice the rate of non-arthritis suffers
 
 ## Rent or own home
 
  brfss %>%
   select(RENTHOM1, hasasthma) %>%
-  collect %>%
   mutate(renthome = if_else(RENTHOM1 == 1, 'own', if_else(RENTHOM1 == 2, 'rent', if_else(RENTHOM1 == 3, 'other', 'unknown')))) %>%
+  select(renthome, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(renthome), funs(ordered(., levels=c("no", "yes",  'other', "unknown")))) %>%
-  pgraph('renthome')
+  pgraph('renthome', "Asthma and Home Ownership")
 
 ## Sex
 
  brfss %>%
   select(SEX, hasasthma) %>%
+  mutate(sexx = if_else(SEX == 1, 'male', if_else(SEX == 2, 'female', 'unknown'))) %>%
+  select(sex = sexx, c("hasasthma")) %>%
   collect %>%
-  mutate(sex = if_else(SEX == 1, 'male', if_else(SEX == 2, 'female', 'unknown'))) %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(sex), funs(ordered(., levels=c("male", "female",  "unknown")))) %>%
-  pgraph('sex')
+  pgraph('sex', 'Asthma and Sex')
 
 ## Age Group
 
  brfss %>%
   select(AGE_G, hasasthma) %>%
-  collect %>%
   mutate(agegroup = if_else(AGE_G == 1, '18', if_else(AGE_G == 2, '25', if_else(AGE_G == 3, '35', if_else(AGE_G == 4, '45', if_else(AGE_G == 5, '55', if_else(AGE_G == 6, '65', 'unknown' ))))))) %>%
+  select(agegroup, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(agegroup), funs(ordered(., levels=c("18", "25",  '35', '45', '55', '65', "unknown")))) %>%
-  pgraph('agegroup')
+  pgraph('agegroup', 'Asthma and Age')
 
 ## Weight
 
  brfss %>%
   select(BMI5CAT, hasasthma) %>%
-  collect %>%
   mutate(bmicategory = if_else(BMI5CAT == 1, 'underweight', if_else(BMI5CAT == 2, 'normalweight', if_else(BMI5CAT == 3, 'overweight', if_else(BMI5CAT == 4, 'obese',  'unknown'))))) %>%
+  select(bmicategory, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(bmicategory), funs(ordered(., levels=c('underweight', 'normalweight', 'overweight', 'obese', "unknown")))) %>%
-  pgraph('bmicategory')
+  pgraph('bmicategory', "Asthma and Weight")
 
 ## Smokers
 
 brfss  %>%
   select(SMOKER3, hasasthma) %>% 
-  collect %>% 
   mutate(smoker = if_else(SMOKER3 == 1, 'everyday', if_else(SMOKER3 == 2, 'somedays', if_else(SMOKER3 == 3, 'former', if_else(SMOKER3 == 4, 'never', 'unknown' ))))) %>%
+  select(smoker, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(smoker), funs(ordered(., levels=c("never", "former", "somedays", "everyday", "unknown")))) %>%
-  pgraph('smoker')
+  pgraph('smoker', "Asthma and Smoking")
 
 ## Educational Level
 
 brfss  %>%
   select(EDUCAG, hasasthma) %>% 
-  collect %>% 
   mutate(education = if_else(EDUCAG == 1, 'non hs grad', if_else(EDUCAG == 2, 'hs grad', if_else(EDUCAG == 3, 'college', if_else(EDUCAG == 4, 'college grad', 'unknown'))))) %>%
+  select(education, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(education), funs(ordered(., levels=c("non hs grad", "hs grad", "college", "college grad", "unknown")))) %>%
-  pgraph('education')
+  pgraph('education', "Asthma and Education")
 
 ## Income group
 
@@ -168,7 +170,6 @@ l[[77]] <- 'unknown'
 l[[99]] <- 'refused'
 brfss  %>%
   select(INCOMG, hasasthma) %>% 
-  collect %>% 
   mutate(income = if_else(INCOMG==1, "10k",
                          if_else(INCOMG==2, "15k",
                                 if_else(INCOMG==3, "20k",
@@ -178,15 +179,17 @@ brfss  %>%
                                                             if_else(INCOMG==7, "75k",
                                                                    if_else(INCOMG==8,">75k",
                                                                           if_else(INCOMG==99, "refused", "unknown")))))))))) %>%
+  select(income, hasasthma) %>%
+  collect %>%
   mutate_all(funs(as.factor(.))) %>%
   mutate_at(vars(income), funs(ordered(., levels=unlist(l)))) %>%
-  pgraph('income')
+  pgraph('income', "Asthma and Income")
 
 ## State
 brfss  %>%
   select(STATE, hasasthma) %>% 
   collect %>%
   mutate_all(funs(as.factor(.))) %>%
-  pgraph('STATE')
+  pgraph('STATE', "Asthma and Location (state)")
 
 
