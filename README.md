@@ -343,11 +343,18 @@ select count(dispcode) from brfss_2013 where dispcode = 1200;
 So we have one incorrect value, where a 3 (our data) should be an 8. I think I'm going to ignore it for now!
 
 # Exploration
-Using `scripts/3_explore.R` we produced prevalence graphs showing, for each of the features, what the prevalence of
-asthma was for the various values of the feature. 
+Using `scripts/3_explore.R` we produced prevalence graphs. Two graphs were produced for each feature:
+* A graph showing the prevalence of the various classes and the asthmatic response as a percentage of
+the global population
+* A graph showing the prevalence of asthma amongst the various classes of the feature
 
-No single characteristic stood out as being strongly indicative of asthma.
+Overall we observed that there could be large variations on a global
+scale (e.g. only 10% of the population had suffered from a heart attack)
 
+Of interest was the monotonic increase in population with age
+ (the survey was quite skewed toward elderly people although they were slightly less
+ likely to be asthma suffers than the younger population)
+ 
 # Modeling/Analysis
 We used three different models:
 * LogisticRegression
