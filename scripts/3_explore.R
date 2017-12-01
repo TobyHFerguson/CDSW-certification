@@ -94,7 +94,7 @@ b <- brfss  %>%
   collect %>% 
   mutate_all(funs(as.factor(.))) 
   global_prev(b, 'racegroup', "Asthma and Race")
-  in_class_pre(b, 'racegroup', "Asthma and Race")
+  in_class_prev(b, 'racegroup', "Asthma and Race")
 
 ### Health
 b <- brfss %>%
