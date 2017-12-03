@@ -1,14 +1,22 @@
-import org.apache.spark.sql.{DataFrame,Dataset}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.classification.{LogisticRegression, RandomForestClassifier,GBTClassifier};
-import org.apache.spark.sql.functions._;
-import org.apache.spark.ml.feature._;
-import org.apache.spark.ml.linalg.DenseMatrix;
-import org.apache.spark.ml._;
+import org.apache.spark.ml.feature.{OneHotEncoder,VectorAssembler}
+import org.apache.spark.ml.Pipeline;
+
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
+
 
 // Read in the parquet file
 
-val brfss = spark.read.format("parquet").load("brfss/2011.parquet", "brfss/2012.parquet", "brfss/2013.parquet", "brfss/2014.parquet", "brfss/2015.parquet", "brfss/2016.parquet").cache();
-  
+//val brfss = spark.read.format("parquet").load("brfss/2011.parquet", 
+//"brfss/2012.parquet", 
+//"brfss/2013.parquet", 
+//"brfss/2014.parquet", 
+//"brfss/2015.parquet", 
+//"brfss/2016.parquet").cache();
+ 
+val brfss = spark.read.format("parquet").load("brfss/2011.parquet").cache()
+
 // Drop the null valued rows and those with no asthma value.
 val brfss_no_nulls = brfss.na.drop().filter("CASTHM1 in (1,2)");
   
@@ -102,30 +110,31 @@ val training = splits(0).cache();
 val test = splits(1).cache();
   
 
-def confusion_matrix(prediction: DataFrame) = {
-  val p = prediction
-  val tp = p.filter("label == 1 and prediction ==1").count;
-  val fp = p.filter("label == 0 and prediction ==1").count;
-  val tn = p.filter("label == 0 and prediction ==0").count;
-  val fn = p.filter("label == 1 and prediction == 0").count;
-                                       
-  new DenseMatrix(2,2,Array(tn, fn, fp, tp))
+def evalPL(title : String, predictionsAndLabels: org.apache.spark.rdd.RDD[(Double,Double)]) : Unit = {
+  val bc_metrics = new BinaryClassificationMetrics(predictionsAndLabels)
+  val mc_metrics = new MulticlassMetrics(predictionsAndLabels)
+  println("\n%s\n".format(title))
+  println("Area Under ROC: %.2f".format(bc_metrics.areaUnderROC))
+  println("Accuracy: %.2f".format(mc_metrics.accuracy))
+  println("F1: %.2f".format(mc_metrics.weightedFMeasure))
+  println("Confusion Matrix:")
+  println(mc_metrics.confusionMatrix)
+  println()
 }
 
-def errorRate(prediction: DataFrame) = {
-  prediction.filter("label != prediction").count.toDouble / prediction.count
+
+def evalPrediction(title : String, df: DataFrame) : Unit = {
+  val predictionsAndLabels : org.apache.spark.rdd.RDD[(Double, Double)] = df.select("prediction", "label").rdd.map(row => (row.getDouble(0), row.getInt(1).toDouble)).cache()
+  evalPL(title, predictionsAndLabels)
 }
+
+
 
 val lr = new LogisticRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8);  
   // Fit the model
-val lrModel : Transformer = lr.fit(training)
+val lrModel = lr.fit(training)
 val lrPrediction = lrModel.transform(test).cache()
-
-// Logistic Regression Evaluation
-//Confusion Matrix - predictions in columns, non-asthma | asthma
-println(confusion_matrix(lrPrediction))
-//Error rate
-println("%.2f%%".format(errorRate(lrPrediction)*100))
+evalPrediction("Logistic Regression",lrPrediction)
 
 
 // Random Forest
@@ -133,23 +142,14 @@ val rf = new RandomForestClassifier().setNumTrees(10)
 val rfModel = rf.fit(training)
 val rfPrediction = rfModel.transform(test).cache()
 //
-//Random Forest Evaluation
-//Confusion Matrix - predictions in columns, non-asthma | asthma
-println("\n"+confusion_matrix(lrPrediction))
-//Error Rate
-println("\nError Rate: %.2f%%".format(errorRate(lrPrediction)*100))
-  
+evalPrediction("Random Forest", rfPrediction)
 
 // # Gradient Boosted Trees
 val gbt = new GBTClassifier().setMaxIter(10)   
 val gbtModel = gbt.fit(training)
 val gbtPrediction = gbtModel.transform(test).cache()
+evalPrediction("Gradient Boosted Trees", gbtPrediction)
 
-//Gradient Boosted Trees Evaluation
-//Confusion Matrix - predictions in columns, non-asthma | asthma
-println("\n"+confusion_matrix(gbtPrediction))
-//Error Rate
-println("\nError Rate: %.2f%%".format(errorRate(gbtPrediction)*100))
 
 // The results demonstrate that the model simply chooses 'no asthma' as the best predictor, no
 // matter what.
@@ -164,13 +164,7 @@ training.filter("label=1").count()/training.filter("label=0").count().toFloat*10
 val training_boosted = training.filter("label=1").union(training.filter("label = 0").sample(true, 0.4,3839))
 val tbModel = lr.fit(training_boosted)
 val tbp = tbModel.transform(test)
-
-// Training Boosted Evaluation
-// Confusion Matrix
-println("\n"+confusion_matrix(tbp))
-//Error Rate
-println("\nError Rate: %.2f%%".format(errorRate(tbp)*100))
-
+evalPrediction("Logistic Regression (Boosted)", tbp)
 
 // The result is the same, disappointingly.
 

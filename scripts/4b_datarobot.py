@@ -57,13 +57,20 @@ your_token=os.environ["DR_API_TOKEN"]
 dr.Client(token=your_token, endpoint='https://app.datarobot.com/api/v2')
 project = dr.Project.start(train_df,
                            project_name='BRDSS',
-                           target='Label', 
+                           target='Label',
+                           metric='AUC',
                            worker_count=4)
 
 
 ## Working with Models 
 project.wait_for_autopilot() #block until all models finish - takes about 27 mins!
 models = project.get_models()
+
+for idx, model in enumerate(models):
+    print('[{}]: {} - {}'.
+          format(idx, model.metrics['AUC']['validation'], model.model_type))
+    
+    
 best_model = models[0] # choose best model - eXtreme Gradient Boosted Trees Classifier with Early Stopping (Fast Feature Binning)
 
 try:

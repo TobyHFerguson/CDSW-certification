@@ -3,11 +3,6 @@
 // mllib includes analysis classes such as MulticlassMetrics which are unavailable
 // in the newer, and incomplete, ml.
 
-import org.apache.spark.sql.{DataFrame,Dataset}
-import org.apache.spark.ml.classification.{LogisticRegression, RandomForestClassifier,GBTClassifier};
-import org.apache.spark.sql.functions._;
-import org.apache.spark.ml.feature._;
-import org.apache.spark.ml._;
 
 // Read in the parquet file
 
@@ -139,7 +134,7 @@ val training = splits(0).cache()
 val test = splits(1).cache()
 
 // Run training algorithm to build the model
-import org.apache.spark.mllib.classification._
+import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
 val lr_model = new LogisticRegressionWithLBFGS().run(training)
 
 // Compute raw scores on the test set.
@@ -148,23 +143,22 @@ val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
   (prediction, label)
 }
 
-def getError(rdd: RDD[(Double, Double)]): Double = {
-  rdd.filter(r => r._1 != r._2).count.toDouble / rdd.count
+// Get evaluation metrics.
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
+
+def evalPL(title : String, predictionsAndLabels: org.apache.spark.rdd.RDD[(Double,Double)]) : Unit = {
+  val bc_metrics = new BinaryClassificationMetrics(predictionsAndLabels)
+  val mc_metrics = new MulticlassMetrics(predictionsAndLabels)
+  println("\n%s\n".format(title))
+  println("Area Under ROC: %.2f".format(bc_metrics.areaUnderROC))
+  println("Accuracy: %.2f".format(mc_metrics.accuracy))
+  println("F1: %.2f".format(mc_metrics.weightedFMeasure))
+  println("Confusion Matrix:")
+  println(mc_metrics.confusionMatrix)
+  println()
 }
 
-// Get evaluation metrics.
-import org.apache.spark.mllib.evaluation._
-
-
-// The confusion matrix (predicted values in columns, not asthma, then asthma)
-// Shows that, largely, this model predicts not asthma in almost all cases
-var cm = new MulticlassMetrics(predictionAndLabels).confusionMatrix
-println("Logistic Regression Evaluation \n")
-println("Confusion Matrix - predictions in columns, non-asthma | asthma")
-println(cm)
-
-//Furthermore the error rate is low, as one might expect:
-println("Error rate: %.2f%%".format(getError(predictionAndLabels)*100))
+evalPL("Logistic Regression with LBFGS", predictionAndLabels)
 
 
 // Now for a RandomForest.
@@ -185,16 +179,14 @@ import org.apache.spark.mllib.tree.model.RandomForestModel
 val rf_model = RandomForest.trainClassifier(training, numClasses, categoricalFeaturesInfo,
   numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
 
-// Evaluate model on test instances and compute test error
-val predictionAndLabels = test.map { point =>
-  val prediction = rf_model.predict(point.features)
-  (prediction, point.label )
+
+val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
+  val prediction = rf_model.predict(features)
+  (prediction, label)
 }
-var cm = new MulticlassMetrics(predictionAndLabels).confusionMatrix
-println("RandomForest Regression Evaluation \n")
-println("Confusion Matrix - predictions in columns, non-asthma | asthma")
-println(cm)
-println("Error rate: %.2f%%".format(getError(predictionAndLabels)*100))
+
+evalPL("Random Forest", predictionAndLabels)
+
 
 
 // Train a GradientBoostedTrees model.
@@ -215,11 +207,8 @@ val predictionAndLabels = test.map { point =>
   (prediction, point.label )
 }
 
-var cm = new MulticlassMetrics(predictionAndLabels).confusionMatrix
-println("Gradient Boosted Tree Evaluation \n")
-println("Confusion Matrix - predictions in columns, non-asthma | asthma")
-println(cm)
-println("Error rate: %.2f%%".format(getError(predictionAndLabels)*100))
+evalPL("Random Forest", predictionAndLabels)
+
 
 // So the conclusion is that none of these models do any better than those setup using 
 // ml.
